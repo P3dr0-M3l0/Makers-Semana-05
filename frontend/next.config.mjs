@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["*.app.github.dev"],
+  async rewrites() {
+    const backend = process.env.BACKEND_INTERNAL_URL || "http://backend:8000";
+    return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
+  },
 };
-
 export default nextConfig;
