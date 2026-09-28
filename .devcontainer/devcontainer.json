@@ -1,6 +1,9 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "image": "mcr.microsoft.com/devcontainers/base:jammy",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
+  },
+  "runArgs": ["--volume=/var/lib/docker", "--privileged"]
 }
