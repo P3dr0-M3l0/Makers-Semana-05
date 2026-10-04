@@ -5,3 +5,10 @@ node_modules/
 .next/
 *.sqlite3
 nginx/certs/
+
+# Firebase
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+*-firebase-adminsdk-*.json
+serviceAccount*.json
