@@ -3,17 +3,28 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_URL ?? "";
     fetch(`${base}/api/health/`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setData)
-      .catch((e) => setError(e.message));
+      .catch(() => setError(true));
   }, []);
 
-  if (error) return <p>Erro: {error}</p>;
+  if (error)
+    return (
+      <main style={{ padding: 32 }}>
+        <h1>Dados indisponíveis</h1>
+        <p>
+          Não foi possível carregar os dados agora. Tente novamente mais tarde.
+        </p>
+      </main>
+    );
   if (!data) return <p>Carregando...</p>;
 
   return (
