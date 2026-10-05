@@ -25,7 +25,7 @@ export default function Home() {
 
   return (
     <main style={{ padding: 32 }}>
-      <h1>Status: {data.status}</h1>
+      <h1 style={{ color: "#4da3ff" }}>Status: {data.status} - Versão B</h1>
       <ul>{data.items.map((i) => <li key={i}>{i}</li>)}</ul>
     </main>
   );
