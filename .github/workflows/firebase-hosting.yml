@@ -1,0 +1,108 @@
+name: Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: firebase-hosting-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # 1) Lint e testes do frontend
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  # 2) Gera o site estatico com a config de producao
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      STATIC_EXPORT: "true"
+      NEXT_PUBLIC_DATA_SOURCE: firestore
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: melo-makers
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: frontend/out
+
+  # 3) Pre-visualizacao em pull request
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: frontend/out
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: melo-makers
+
+  # 4) Producao apos o merge na main
+  deploy-live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: frontend/out
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: melo-makers
+          channelId: live
+
+  # 5) Teste de fumaca: o site responde e o Firestore devolve os itens
+  smoke-test:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy-live
+    runs-on: ubuntu-latest
+    steps:
+      - name: Site responde
+        run: curl -fsS --retry 3 --retry-delay 5 -o /dev/null https://melo-makers.web.app
+      - name: Firestore devolve os itens
+        run: |
+          curl -fsS "https://firestore.googleapis.com/v1/projects/melo-makers/databases/(default)/documents/items" | grep -q "Configurar Docker"
